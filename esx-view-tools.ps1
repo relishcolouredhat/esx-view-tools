@@ -106,18 +106,18 @@ function scrape-vidata {
             }
         if ($cpup1 -gt 90) {
             $flag = 'red'
-            $flagreason = 'CPU-USE'
+            $flagreason = 'CPU-USE'   
             $flagstate = 3
             }
         if ($flagstate -lt 3){ #properties that only exist in an active vm
-            $cpup1 = ($_ | get-stat -stat cpu.usage.average -maxsamples 1).value.toint16()
+            $cpup1 = ($_ | get-stat -stat cpu.usage.average -maxsamples 1).value.toint16($_)
             $cpuhz1 = $_ | get-stat -stat cpu.usagemhz.average -maxsamples 1
             if ($ipaddr) {$rtt = (test-connection $ipaddr -count 1).responsetime} 
             if (!$ipaddr) {$rtt = '!!!'}
             }
         else{ #properties to set based upon the assumption a vm is inactive (mostly to allow sorting to work properly)
             $cpup1 = 0
-            $ipaddr = 'OFF'
+            #$ipaddr = 'OFF'
             $cphhz1 = (0)
             }
         if ($cpuhz1 -eq $null) {$cpuhz1 = (0)}
@@ -218,4 +218,4 @@ function work {
     }
 
 write-host 'all functions loaded fresh'
-write-host 'NEW METHODS ACHIEVED!'
+write-host 'Methods 0.2-1'

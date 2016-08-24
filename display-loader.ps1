@@ -8,10 +8,12 @@
 
 
 
-$refreshmethods = 3 #time in whole seconds betwen checks for new display settings
+$refreshmethods = 2 #time in whole seconds betwen checks for new display settings
 $looptime = $refreshmethods
-
-. "C:\esxiso\esx-view-tools.ps1"
+$dir = get-content .\local.conf
+$file = 'esx-view-tools.ps1'
+ 
+. "$dir\$file"
 
 
 function primaryloop {
@@ -21,12 +23,11 @@ function primaryloop {
             $looptime--
             write-host "looptime: $looptime"
             }
-        . "C:\esxiso\esx-view-tools.ps1"
+        . "$dir\$file"
         $looptime = $refreshmethods
         }
     }
 
-$MyInvocation
 
 primaryloop
 
