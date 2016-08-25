@@ -7,7 +7,7 @@
 ##########################################
 
 
-$verbosepreference = 0 #verbose preference for pre-powerCLI snapins
+#$verbosepreference = 0 #verbose preference for pre-powerCLI snapins
 
 $host.ui.RawUI.WindowTitle = 'loading PowerCLI'
 
@@ -32,7 +32,7 @@ $loadvalue = 75
 $loadvalue = 100
 #Write-Progress -Activity 'Loading Modules' -Status 'Loading Modules' -PercentComplete $loadvalue
 
-$verbosepreference = 2 #verbose-preference to get 
+#$verbosepreference = 2 #verbose-preference to get 
 
 $host.ui.RawUI.WindowTitle = "NOC WATCHKEEPER ALPHA                         $methodver LV:$global:pbtc_display_loaderver"
 
@@ -47,7 +47,7 @@ function scrape-vidata {
         [object[]]$obj
         )
     Begin {
-        $verbosepreference = 2 #uncomment for verbose scraper output
+        #$verbosepreference = 2 #uncomment for verbose scraper output
         $i = 0
         $scrapeStartTime = get-date
         write-verbose "Last run took $scrapespan seconds for $numberOfVM VM's"
@@ -76,7 +76,7 @@ function scrape-vidata {
         # 
         # This is the purpose of the following line.
         #
-        $verbosepreference = 0 # <<---- COMMENT OUT FOR POWER CLI VERBOSITY 
+        #$verbosepreference = 0 # <<---- COMMENT OUT FOR POWER CLI VERBOSITY 
         #
         #
         #
@@ -86,7 +86,7 @@ function scrape-vidata {
         #
         #
         #
-        $verbosepreference = 2# <<---- REVERSE OF ABOVE CALL TO REMOVE CLI VERBOSITY
+        #$verbosepreference = 2# <<---- REVERSE OF ABOVE CALL TO REMOVE CLI VERBOSITY
         #                       <<<<<< CHANGE THIS TO A CALL TO THE STATE PRIOR TO 
         #                       <<<<<< TOGGLE ABOVE. 
         #
