@@ -16,7 +16,6 @@
 #
 #
 
-$
 
 $loadvalue = 0
 
@@ -77,7 +76,7 @@ function scrape-vidata {
     Begin {
         $i = 0
         $scrapeStartTime = get-date
-        write-host "Last run took $scrapespan.seconds"
+        write-host "Last run took $scrapespan seconds for $numberOfVM VM's"
         }
     Process {
         $i++
