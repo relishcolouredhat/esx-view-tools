@@ -51,18 +51,8 @@ $loadvalue = 100
 
 $verbosepreference = 0
 
-$host.ui.RawUI.WindowTitle = "NOC WATCHKEEPER ALPHA 1"
+$host.ui.RawUI.WindowTitle = "NOC WATCHKEEPER ALPHA $methodver"
 
-function test-object {
-    [cmdletbinding()] 
-    Param ( 
-        [parameter(ValueFromPipeline)]
-        [int[]]$Integer
-        )
-    Process {
-        $_
-        }
-    }
 
 
 $numberOfVM = $vms.Length
