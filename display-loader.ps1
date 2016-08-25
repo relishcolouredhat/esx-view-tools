@@ -16,7 +16,7 @@ $file = 'esx-view-tools.ps1'
 
 $loadermajor = "0.2"
 $loaderminor = "1"
-$global:pbtc_display_loaderver = "LdrV:$loadermajor-$loaderminor"
+$global:pbtc_display_loaderver = "$loadermajor-$loaderminor"
 
 function primaryloop {
     while ($true){
