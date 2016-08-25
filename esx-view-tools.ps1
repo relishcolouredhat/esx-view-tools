@@ -7,22 +7,14 @@
 ##########################################
 
 
-
-$loadvalue = 0
-
-#Write-Progress -Activity 'Loading Modules' -Status 'Loading powerCLI snapin' -PercentComplete $loadvalue
-
-$verbosepreference = 2
+$verbosepreference = 0 #verbose preference for pre-powerCLI snapins
 
 $host.ui.RawUI.WindowTitle = 'loading PowerCLI'
 
 Add-PSSnapin vmware.vimautomation.core -ea "silentlycontinue"
 
-$loadvalue = 25
-
 #Write-Progress -Activity 'Loading Modules' -Status 'Connecting to vCenter' -PercentComplete $loadvalue
-
-$server = '192.168.86.199'
+#$server = '192.168.86.199'
 
 if (!$defaultviserver.IsConnected){
     write-verbose "Conencting to $server"
@@ -40,9 +32,9 @@ $loadvalue = 75
 $loadvalue = 100
 #Write-Progress -Activity 'Loading Modules' -Status 'Loading Modules' -PercentComplete $loadvalue
 
-$verbosepreference = 0
+$verbosepreference = 2 #verbose-preference to get 
 
-$host.ui.RawUI.WindowTitle = "NOC WATCHKEEPER ALPHA $methodver                             LV:$global:pbtc_display_loaderver"
+$host.ui.RawUI.WindowTitle = "NOC WATCHKEEPER ALPHA                         $methodver LV:$global:pbtc_display_loaderver"
 
 
 
@@ -55,6 +47,7 @@ function scrape-vidata {
         [object[]]$obj
         )
     Begin {
+        $verbosepreference = 2 #uncomment for verbose scraper output
         $i = 0
         $scrapeStartTime = get-date
         write-verbose "Last run took $scrapespan seconds for $numberOfVM VM's"
@@ -66,19 +59,40 @@ function scrape-vidata {
         }
     Process {
         $i++
-        #write-host "Loading VM:($i/$numberOfVM)"
-        
+        write-verbose "Loading VM:($i/$numberOfVM)"
+        write-debug "Loading VM: $_.guest"
         write-host '.'-NoNewline
         $flagstate = 1 # 1 - Green, 2 - Yellow, 3 - Red (0 reserved for future use)
         $flag = 'red'
         $pwrstate = $_.powerstate
         $ahostname = 'NULL'
-        
-        $aguest = $_ | Get-VMGuest 
-        $ahost = $_ | Get-VMHost 
 
-        if ($pwrstate -ne 'PoweredOff') {$vmstats = $_ | get-stat -common -maxsamples 1}
+
         
+        #
+        # Lines below are the calls to the VMWare API (PowerCLI). They Are the reasonably
+        # slow, and are very chatty when $verboseprefernece is not set to 0. Comment out
+        # the line if you need to troubleshoot the calls to PowerCLI
+        # 
+        # This is the purpose of the following line.
+        #
+        $verbosepreference = 0 # <<---- COMMENT OUT FOR POWER CLI VERBOSITY 
+        #
+        #
+        #
+        $aguest = $_ | Get-VMGuest 
+        $ahost = $_ | Get-VMHost         
+        if ($pwrstate -ne 'PoweredOff') {$vmstats = $_ | get-stat -common -maxsamples 1}
+        #
+        #
+        #
+        $verbosepreference = 2# <<---- REVERSE OF ABOVE CALL TO REMOVE CLI VERBOSITY
+        #                       <<<<<< CHANGE THIS TO A CALL TO THE STATE PRIOR TO 
+        #                       <<<<<< TOGGLE ABOVE. 
+        #
+        #
+
+
         $ahostname = $aguest.hostname
         $ipaddr = $aguest.IPAddress[0]
         $flagreason = ''
@@ -217,7 +231,7 @@ function work {
     #write-host "firstrun: $firstrun"
     $columns = @{'property'='flag', 'pwrstate', 'guest', 'ip', 'rtt', 'flagreason', 'cpup','%', 'cpuhz', 'Mhz'}
     #take input vm's > grab data from them > sort by poperty > grab above columns | format in a table autosized and wrapped when needed > 
-    
+    $verbosepreference = 0
     $vms | scrape-vidata | sort cpup -Descending | select @columns | format-table -autosize -wrap | out-string | fromstring-colourize
     $refresh = 0
     $i = $refresh
