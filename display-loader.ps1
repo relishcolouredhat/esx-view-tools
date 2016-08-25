@@ -16,14 +16,13 @@ $file = 'esx-view-tools.ps1'
 
 $loadermajor = "0.2"
 $loaderminor = "1"
-$loaderver = "$loadermajor-$loaderminor"
+$global:pbtc_display_loaderver = "LdrV:$loadermajor-$loaderminor"
 
 function primaryloop {
     while ($true){
         while ($looptime -gt 0){
             work
-            write-host
-            write-host "LV:$loaderver/T:$looptime"
+            write-host "LV:$pbtc_display_loaderver/T:$looptime"
             $looptime--
             }
         . "$dir\$file"
@@ -32,11 +31,14 @@ function primaryloop {
     }
 
 
-#primaryloop
+primaryloop
 
+<#
 function run-in-ide { #use to run in IDE since $dir will fail
     $dir = 'D:\packetbadger\esx-view-tools'#enter directory here. duh.
     primaryloop
     }
 
 run-in-ide
+
+#>

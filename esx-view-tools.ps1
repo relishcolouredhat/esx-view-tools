@@ -7,15 +7,6 @@
 ##########################################
 
 
-################
-#
-#
-#roadmap question: how to / should you alarm on a deleted VM? (default, yes IMHO as only production servers would be piped into
-#    the work functon.   
-#
-#
-#
-
 
 $loadvalue = 0
 
@@ -51,7 +42,7 @@ $loadvalue = 100
 
 $verbosepreference = 0
 
-$host.ui.RawUI.WindowTitle = "NOC WATCHKEEPER ALPHA $methodver"
+$host.ui.RawUI.WindowTitle = "NOC WATCHKEEPER ALPHA $methodver                             LV:$global:pbtc_display_loaderver"
 
 
 
@@ -66,11 +57,18 @@ function scrape-vidata {
     Begin {
         $i = 0
         $scrapeStartTime = get-date
-        write-host "Last run took $scrapespan seconds for $numberOfVM VM's"
+        write-verbose "Last run took $scrapespan seconds for $numberOfVM VM's"
+        $pbarline = '_'*($numberofvm-($numberofvm.Tostring($_).length))
+        $pbarlong = '_'*$numberofvm
+        $vmps = [math]::round($numberOfVM / $scrapespan,3)
+        $pbarfull = "1$pbarline$numberOfVM [EST $scrapespan`s refresh @ $vmps` vmps]"
+        write-host $pbarfull
         }
     Process {
         $i++
-        write-host "($i/$numberOfVM)"
+        #write-host "Loading VM:($i/$numberOfVM)"
+        
+        write-host '.'-NoNewline
         $flagstate = 1 # 1 - Green, 2 - Yellow, 3 - Red (0 reserved for future use)
         $flag = 'red'
         $pwrstate = $_.powerstate
@@ -177,6 +175,7 @@ function fromstring-colourize {
         $outpage = $page.split([environment]::Newline)
         clear
         write-host 
+        write-host $methodver
         foreach ($line in $outpage){
                 if ($line.equals('')){continue} #catch and remove blanklines (generate real blanklines with a space)
                 if ($line.contains('green')){ write-host $line -foregroundcolor green -backgroundcolor darkgreen}              
@@ -210,18 +209,19 @@ new-object displayline -Property @{
 
  
 $methodmajor = '0.2'
-$methodminor = '1f'   
-$methodver = "$methodmajor-$methodminor"
+$methodminor = '1h'   
+$methodver = "vtBuild:$methodmajor-$methodminor "
 
 function work {
     write-verbose 'starting workerbee 0.5'
     #write-host "firstrun: $firstrun"
     $columns = @{'property'='flag', 'pwrstate', 'guest', 'ip', 'rtt', 'flagreason', 'cpup','%', 'cpuhz', 'Mhz'}
     #take input vm's > grab data from them > sort by poperty > grab above columns | format in a table autosized and wrapped when needed > 
+    
     $vms | scrape-vidata | sort cpup -Descending | select @columns | format-table -autosize -wrap | out-string | fromstring-colourize
-    $refresh = 2
+    $refresh = 0
     $i = $refresh
-    write-host $methodver -nonewline
+    #write-host $methodver -nonewline
     while ($i -gt 0 ) {
         $i--
         Write-Host "." -NoNewline
