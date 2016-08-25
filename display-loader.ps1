@@ -7,7 +7,6 @@
 ##########################################
 
 
-
 $refreshmethods = 2 #time in whole seconds betwen checks for new display settings
 $looptime = $refreshmethods
 $dir = get-content .\local.conf
@@ -15,13 +14,17 @@ $file = 'esx-view-tools.ps1'
  
 . "$dir\$file"
 
+$loadermajor = "0.2"
+$loaderminor = "1"
+$loaderver = "$loadermajor-$loaderminor"
 
 function primaryloop {
     while ($true){
         while ($looptime -gt 0){
             work
+            write-host
+            write-host "LV:$loaderver/T:$looptime"
             $looptime--
-            write-host "looptime: $looptime"
             }
         . "$dir\$file"
         $looptime = $refreshmethods
@@ -29,5 +32,11 @@ function primaryloop {
     }
 
 
-primaryloop
+#primaryloop
 
+function run-in-ide { #use to run in IDE since $dir will fail
+    $dir = 'D:\packetbadger\esx-view-tools'#enter directory here. duh.
+    primaryloop
+    }
+
+run-in-ide

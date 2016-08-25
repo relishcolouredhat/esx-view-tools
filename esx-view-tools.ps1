@@ -1,4 +1,4 @@
-﻿##########################################
+﻿ ##########################################
 ### This document is the exclusive property
 ### of the Packet Badger Technology Corporation
 ### All Rights Reserverved 2016
@@ -11,12 +11,12 @@
 #
 #
 #roadmap question: how to / should you alarm on a deleted VM? (default, yes IMHO as only production servers would be piped into
-#    the work functon. 
+#    the work functon.   
 #
 #
 #
 
-
+$
 
 $loadvalue = 0
 
@@ -66,35 +66,47 @@ function test-object {
     }
 
 
+$numberOfVM = $vms.Length
+
 function scrape-vidata {
     [cmdletbinding()]
     Param (
         [parameter(ValueFromPipeline)]
         [object[]]$obj
         )
+    Begin {
+        $i = 0
+        $scrapeStartTime = get-date
+        write-host "Last run took $scrapespan.seconds"
+        }
     Process {
-        write-verbose 'grabbing state of '
+        $i++
+        write-host "($i/$numberOfVM)"
         $flagstate = 1 # 1 - Green, 2 - Yellow, 3 - Red (0 reserved for future use)
         $flag = 'red'
         $pwrstate = $_.powerstate
         $ahostname = 'NULL'
-        $aguest = $_ | Get-VMGuest
-        $ahost = $_ | Get-VMHost
+        
+        $aguest = $_ | Get-VMGuest 
+        $ahost = $_ | Get-VMHost 
+
+        if ($pwrstate -ne 'PoweredOff') {$vmstats = $_ | get-stat -common -maxsamples 1}
+        
         $ahostname = $aguest.hostname
         $ipaddr = $aguest.IPAddress[0]
         $flagreason = ''
         $ahoststate = $ahost.ConnectionState
         $os = $aguest.OSFullName
-        
+        $vmver = $_.version
         
 
         if ($pwrstate -eq 'PoweredOn') {$flag = 'green'}
-        if ($pwrstate -eq 'Suspended') {
+        if ($pwrstate -eq 'Suspended') { #handles 'suspended' power state
             $flag = 'yellow'
-            $flagreason = 'powerstate-suspended'
+            $flagreason = 'pwr-suspended'
             $flagstate = 2
             }
-        if (!$ipaddr) {
+        if (!$ipaddr) { #handles lack of IP address
             $flag = 'yellow'
             $flagreason='no-guest-ip'
             $flagstate = 2
@@ -104,44 +116,59 @@ function scrape-vidata {
             $flagreason = 'pwroff-svr'
             $flagstate = 3
             }
-        if ($cpup1 -gt 90) {
+
+        if ($flagstate -lt 3){ #properties that only exist in an active vm
+            #$vmstats = $_ | get-stat -common -MaxSamples 1 #pulls common statistcs object for an active vm
+            $cpup = $vmstats[8].value #may be setup for v11 vm if it fails on other vm versions
+            $cpuhz = $vmstats[7].value
+
+            #$cpup1datum = $_ | get-stat -stat cpu.usage.average -maxsamples 1
+            #$cpup1 = $cpup1datum.value.toint16()
+            #$cpuhz1 = $_ | get-stat -stat cpu.usagemhz.average -maxsamples 1
+            if ($ipaddr) {$rtt = (test-connection $ipaddr -count 1).responsetime} 
+            if (!$ipaddr) {$rtt = '???'}
+            }
+        if ($flagstate -eq 3){ #properties to set based upon the assumption a vm is inactive (mostly to allow sorting to work properly)
+            $cpup = 0
+            #$ipaddr = 'OFF'
+            $cpuhz = 0
+            }
+        if ($cpuhz -eq $null) {$cpuhz = 0}
+        if ($cpup -gt 90) {
             $flag = 'red'
             $flagreason = 'CPU-USE'   
             $flagstate = 3
             }
-        if ($flagstate -lt 3){ #properties that only exist in an active vm
-            $cpup1 = ($_ | get-stat -stat cpu.usage.average -maxsamples 1).value.toint16($_)
-            $cpuhz1 = $_ | get-stat -stat cpu.usagemhz.average -maxsamples 1
-            if ($ipaddr) {$rtt = (test-connection $ipaddr -count 1).responsetime} 
-            if (!$ipaddr) {$rtt = '!!!'}
+        if ($pwrstate -eq 'PoweredOff') { #second power off rule to increase predictability of display (pwroff will always be ultimate reason for off server)
+            $flagreason = 'pwroff-svr'
+            $flagstate = 3
             }
-        else{ #properties to set based upon the assumption a vm is inactive (mostly to allow sorting to work properly)
-            $cpup1 = 0
-            #$ipaddr = 'OFF'
-            $cphhz1 = (0)
-            }
-        if ($cpuhz1 -eq $null) {$cpuhz1 = (0)}
-
-
+             
+        
         $line = new-object System.Object
         $line | add-member -type noteProperty -name flag -value $flag
         $line | add-member -type noteProperty -name pwrstate -value $pwrstate
         $line | add-member -type noteProperty -name hostname -value $hostname
-        $line | add-member -type noteProperty -name guest -value $aguest
+        $line | add-member -type noteProperty -name guest -value $aguest 
         $line | Add-member -type noteproperty -name host -value $ahostname
         $line | add-member -type noteProperty -name ip -value $ipaddr
         $line | add-member -type noteProperty -name hoststate -value $ahoststate
         $line | add-member -type noteProperty -name os -value $ipaddr
         $line | add-member -type noteProperty -name rtt -value $rtt
         $line | add-member -type NoteProperty -name flagreason -value $flagreason
-        $line | add-member -type NoteProperty -name cpup1 -value $cpup1
-        $line | add-member -type noteproperty -name cpuhz1 -value $cpuhz1[0]
+        $line | add-member -type NoteProperty -name cpup -value $cpup
+        $line | add-member -type noteproperty -name cpuhz -value $cpuhz
         $line | add-member -type NoteProperty -name flagstate -value $flagstate
         $line | add-member -type NoteProperty -name '%' -value '%'
         $line | add-member -type NoteProperty -name 'Mhz' -value 'Mhz'
         #flag reason property
 
         $line
+        }
+    End {
+        $scrapeEndTime = get-date
+        $global:scrapespan = ($scrapeEndTime - $scrapeStartTime).seconds
+        write-host "Got $numberOfVm VM's in $global:scrapespan"
     }
     } 
 
@@ -186,36 +213,34 @@ function write-colour {
 <#
 new-object displayline -Property @{
     $hostname = get-
-
+    
 
     
 } #>
 
-#$spinner = ('|','/','-','\')
 
-$firstrun = $true
+ 
+$methodmajor = '0.2'
+$methodminor = '1f'   
+$methodver = "$methodmajor-$methodminor"
 
 function work {
     write-verbose 'starting workerbee 0.5'
     #write-host "firstrun: $firstrun"
-    $columns = @{'property'='flag', 'pwrstate', 'guest', 'ip', 'rtt', 'flagreason', 'cpup1','%', 'cpuhz1', 'Mhz'}
+    $columns = @{'property'='flag', 'pwrstate', 'guest', 'ip', 'rtt', 'flagreason', 'cpup','%', 'cpuhz', 'Mhz'}
     #take input vm's > grab data from them > sort by poperty > grab above columns | format in a table autosized and wrapped when needed > 
-    $vms | scrape-vidata | sort cpup1 -Descending | select @columns | format-table -autosize -wrap | out-string | fromstring-colourize
-    $refresh = 5
+    $vms | scrape-vidata | sort cpup -Descending | select @columns | format-table -autosize -wrap | out-string | fromstring-colourize
+    $refresh = 2
     $i = $refresh
+    write-host $methodver -nonewline
     while ($i -gt 0 ) {
         $i--
-        #write-progress -activity 'waiting to refresh' -PercentComplete ((($refresh-$i)/$refresh)*100)
-        #write-host "$i (($refresh-$i)/$refresh) "
-        if (!$firstrun) {write-host "`b"-nonewline}
-        #write-host $spinner[$i] -nonewline
-        Write-Host '.' -NoNewline
+        Write-Host "." -NoNewline
         sleep -milliseconds 1000
-        #set-variable -name firstrun -value $false -scope global
-        #write-host $firstrun
         }
      
     }
 
+
 write-host 'all functions loaded fresh'
-write-host 'Methods 0.2-1'
+write-host "Methods:$methodver"
