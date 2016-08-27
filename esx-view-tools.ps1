@@ -6,6 +6,18 @@
 ### Author: Kelsey R. Comstock
 ##########################################
 
+#
+# Feature Roadmap:
+#
+# Near Horizion.
+#
+# Pull vm version, add to monitored 
+#
+# Setup colour module for structured input
+#
+# 
+# 
+#
 
 #$verbosepreference = 0 #verbose preference for pre-powerCLI snapins
 
@@ -122,7 +134,7 @@ function scrape-vidata {
             #$vmstats = $_ | get-stat -common -MaxSamples 1 #pulls common statistcs object for an active vm
             $cpup = $vmstats[8].value #may be setup for v11 vm if it fails on other vm versions
             $cpuhz = $vmstats[7].value
-
+            
             #$cpup1datum = $_ | get-stat -stat cpu.usage.average -maxsamples 1
             #$cpup1 = $cpup1datum.value.toint16()
             #$cpuhz1 = $_ | get-stat -stat cpu.usagemhz.average -maxsamples 1
