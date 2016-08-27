@@ -5,7 +5,9 @@
 ### No warranty is implied as this document is for internal use only
 ### Author: Kelsey R. Comstock
 ##########################################
-
+$methodmajor = '0.2'
+$methodminor = '1j'   
+$methodver = "vtBuild:$methodmajor-$methodminor "
 #
 # Feature Roadmap:
 #
@@ -25,32 +27,28 @@ $host.ui.RawUI.WindowTitle = 'loading PowerCLI'
 
 Add-PSSnapin vmware.vimautomation.core -ea "silentlycontinue"
 
-#Write-Progress -Activity 'Loading Modules' -Status 'Connecting to vCenter' -PercentComplete $loadvalue
-#$server = '192.168.86.199'
+$server = '192.168.86.199'
+
+$host.ui.RawUI.WindowTitle = 'Checking for vCentre Connection...'
 
 if (!$defaultviserver.IsConnected){
+    $host.ui.RawUI.WindowTitle = 'Connecting to $server...'    
     write-verbose "Conencting to $server"
     connect-viserver $server
     }
 
-$loadvalue = 50
 
-#Write-Progress -Activity 'Loading Modules' -Status 'getting vms...' -PercentComplete $loadvalue
+
 
 $vms =  get-vm
-$loadvalue = 75
-#Write-Progress -Activity 'Loading Modules' -Status 'getting all vms...' -PercentComplete $loadvalue
+
 #$vmguests = get-vm | Get-VMGuest
-$loadvalue = 100
-#Write-Progress -Activity 'Loading Modules' -Status 'Loading Modules' -PercentComplete $loadvalue
 
 #$verbosepreference = 2 #verbose-preference to get 
 
 $host.ui.RawUI.WindowTitle = "NOC WATCHKEEPER ALPHA                         $methodver LV:$global:pbtc_display_loaderver"
-
-
-
 $numberOfVM = $vms.Length
+#$scrapespan = 1 #init to prevent 'devide by zero' error on first VM PER SECOND calc
 
 function scrape-vidata {
     [cmdletbinding()]
@@ -61,12 +59,12 @@ function scrape-vidata {
     Begin {
         #$verbosepreference = 2 #uncomment for verbose scraper output
         $i = 0
-        $scrapeStartTime = get-date
-        write-verbose "Last run took $scrapespan seconds for $numberOfVM VM's"
-        $pbarline = '_'*($numberofvm-($numberofvm.Tostring($_).length))
-        $pbarlong = '_'*$numberofvm
-        $vmps = [math]::round($numberOfVM / $scrapespan,3)
-        $pbarfull = "1$pbarline$numberOfVM [EST $scrapespan`s refresh @ $vmps` vmps]"
+        $scrapeStartTime = get-date #timestamp for start of scrape time
+        write-verbose "Last run took $scrapespan seconds for $numberOfVM VM's" #duration of last runtime
+        $pbarline = '_'*($numberofvm-($numberofvm.Tostring($_).length)) #line for progress bar, shorter to fit numbers on sides
+        $pbarlong = '_'*$numberofvm #line as many chars long as the number of vms
+        $vmps = [math]::round($numberOfVM / $scrapespan,3) #number of vm's per second
+        $pbarfull = "1$pbarline$numberOfVM [EST $scrapespan`s refresh @ $vmps` vmps]" #Progressbar for display
         write-host $pbarfull
         }
     Process {
@@ -223,28 +221,13 @@ function write-colour {
 
 
 
-
-<#
-new-object displayline -Property @{
-    $hostname = get-
-    
-
-    
-} #>
-
-
- 
-$methodmajor = '0.2'
-$methodminor = '1h'   
-$methodver = "vtBuild:$methodmajor-$methodminor "
-
 function work {
     write-verbose 'starting workerbee 0.5'
     #write-host "firstrun: $firstrun"
     $columns = @{'property'='flag', 'pwrstate', 'guest', 'ip', 'rtt', 'flagreason', 'cpup','%', 'cpuhz', 'Mhz'}
     #take input vm's > grab data from them > sort by poperty > grab above columns | format in a table autosized and wrapped when needed > 
     $verbosepreference = 0
-    $vms | scrape-vidata | sort cpup -Descending | select @columns | format-table -autosize -wrap | out-string | fromstring-colourize
+    $vms | scrape-vidata | sort cpup -Descending | select @columns | format-table -autosize | out-string | fromstring-colourize
     $refresh = 0
     $i = $refresh
     #write-host $methodver -nonewline

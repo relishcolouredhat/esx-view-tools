@@ -6,13 +6,23 @@
 ### Author: Kelsey R. Comstock
 ##########################################
 
+ 
+$sourcedir = $myinvocation.mycommand | split-path
+
+write-verbose "Called path detected as $sourcedir"
+
+$sourcefile = 'esx-view-tools.ps1'
+$source = "$sourcedir\$sourcefile"
+
+write-verbose "Loading $sourcefile from dir $sourcedir..."
 
 $refreshmethods = 2 #time in whole seconds betwen checks for new display settings
 $looptime = $refreshmethods
-$dir = get-content .\local.conf
-$file = 'esx-view-tools.ps1'
+
+#$dir = get-content .\local.cfg
+#$file = 'esx-view-tools.ps1'
  
-. "$dir\$file"
+. "$source"
 
 $loadermajor = "0.2"
 $loaderminor = "1"
@@ -25,7 +35,7 @@ function primaryloop {
             write-host "LV:$pbtc_display_loaderver/T:$looptime"
             $looptime--
             }
-        . "$dir\$file"
+        . "$sourcedir\$sourcefile"
         $looptime = $refreshmethods
         }
     }
