@@ -6,8 +6,8 @@
 ### Author: Kelsey R. Comstock
 ##########################################
 $methodmajor = '0.2'
-$methodminor = '1j'   
-$methodver = "vtBuild:$methodmajor-$methodminor "
+$methodminor = '3a'   
+$methodver = "vtBuild:$methodmajor-$methodminor //"
 #
 # Feature Roadmap:
 #
@@ -91,8 +91,20 @@ function scrape-vidata {
         #
         #
         $aguest = $_ | Get-VMGuest 
-        $ahost = $_ | Get-VMHost         
-        if ($pwrstate -ne 'PoweredOff') {$vmstats = $_ | get-stat -common -maxsamples 1}
+        $ahost = $_ | Get-VMHost
+        $vmver = $_.version
+
+        if ($vmver -eq 'v11') { #version 11 vm get-stat pattern, tested       
+            write-debug 'v11 vm detected, using v11 get-stat -common fixed data pattern'
+            if ($pwrstate -ne 'PoweredOff') {$vmstats = $_ | get-stat -common -maxsamples 1}
+            else {$vmstats = $null}
+            }
+
+        else{ #catchall - both do same thing, for future use if other vm versions do not match
+            write-debug 'non-v11 vm detected, still using v11 fixed data pattern'
+            if ($pwrstate -ne 'PoweredOff') {$vmstats = $_ | get-stat -common -maxsamples 1}
+            else {$vmstats = $null}
+            }
         #
         #
         #
@@ -108,7 +120,7 @@ function scrape-vidata {
         $flagreason = ''
         $ahoststate = $ahost.ConnectionState
         $os = $aguest.OSFullName
-        $vmver = $_.version
+        
         
 
         if ($pwrstate -eq 'PoweredOn') {$flag = 'green'}
@@ -119,7 +131,7 @@ function scrape-vidata {
             }
         if (!$ipaddr) { #handles lack of IP address
             $flag = 'yellow'
-            $flagreason='no-guest-ip'
+            $flagreason='[noVMtools?]'
             $flagstate = 2
             }
         if ($pwrstate -eq 'PoweredOff') {
@@ -129,10 +141,31 @@ function scrape-vidata {
             }
 
         if ($flagstate -lt 3){ #properties that only exist in an active vm
-            #$vmstats = $_ | get-stat -common -MaxSamples 1 #pulls common statistcs object for an active vm
-            $cpup = $vmstats[8].value #may be setup for v11 vm if it fails on other vm versions
-            $cpuhz = $vmstats[7].value
-            
+        <#
+            if ($vmver -eq 'v7' -or $vmver -eq 'v8' -or $vmver -eq 'v9'){ 
+                $cpuhzdata = $vmstats[7]
+                $cpudata = $vmstats[8] 
+                }            
+            if ($vmver -eq 'v11'){
+                $cpuhzdata = $vmstats[8]
+                $cpudata = $vmstats[11]
+                }
+        #>
+
+            $cpudata = $vmstats | where {$_.metricID -match 'cpu.usage.average'}
+            $cpuhzdata = $vmstats | where {$_.metricId -match 'cpu.usagemhz.average' -and $_.instance -eq ''}
+
+
+
+            $cpuval = $cpudata.value
+            $cpuunit = $cpudata.unit
+            $cpuhzval = $cpuhzdata.value
+            $cpuhzunit = $cpuhzdata.unit
+            $cpup = "$cpuval$cpuunit"
+            $cpuhz = "$cpuhzval$cpuhzunit" 
+
+
+
             #$cpup1datum = $_ | get-stat -stat cpu.usage.average -maxsamples 1
             #$cpup1 = $cpup1datum.value.toint16()
             #$cpuhz1 = $_ | get-stat -stat cpu.usagemhz.average -maxsamples 1
@@ -141,17 +174,17 @@ function scrape-vidata {
             }
         if ($flagstate -eq 3){ #properties to set based upon the assumption a vm is inactive (mostly to allow sorting to work properly)
             $cpup = 0
-            #$ipaddr = 'OFF'
+            #do not set ip address to 'OFF' - you will try and ping it ;)
             $cpuhz = 0
             }
         if ($cpuhz -eq $null) {$cpuhz = 0}
         if ($cpup -gt 90) {
             $flag = 'red'
-            $flagreason = 'CPU-USE'   
+            $flagreason = '[CPU>90%]'   
             $flagstate = 3
             }
         if ($pwrstate -eq 'PoweredOff') { #second power off rule to increase predictability of display (pwroff will always be ultimate reason for off server)
-            $flagreason = 'pwroff-svr'
+            $flagreason = '[pwroff]'
             $flagstate = 3
             }
              
@@ -170,8 +203,8 @@ function scrape-vidata {
         $line | add-member -type NoteProperty -name cpup -value $cpup
         $line | add-member -type noteproperty -name cpuhz -value $cpuhz
         $line | add-member -type NoteProperty -name flagstate -value $flagstate
-        $line | add-member -type NoteProperty -name '%' -value '%'
-        $line | add-member -type NoteProperty -name 'Mhz' -value 'Mhz'
+        $line | add-member -type NoteProperty -name vmVer -value $vmver
+
         #flag reason property
 
         $line
@@ -180,6 +213,7 @@ function scrape-vidata {
         $scrapeEndTime = get-date
         $global:scrapespan = ($scrapeEndTime - $scrapeStartTime).seconds
         write-host "Got $numberOfVm VM's in $global:scrapespan"
+        $vmstats = $null
     }
     } 
 
@@ -224,7 +258,7 @@ function write-colour {
 function work {
     write-verbose 'starting workerbee 0.5'
     #write-host "firstrun: $firstrun"
-    $columns = @{'property'='flag', 'pwrstate', 'guest', 'ip', 'rtt', 'flagreason', 'cpup','%', 'cpuhz', 'Mhz'}
+    $columns = @{'property'='flag', 'pwrstate', 'guest', 'ip', 'rtt', 'flagreason', 'cpup', 'cpuhz','vmVer'}
     #take input vm's > grab data from them > sort by poperty > grab above columns | format in a table autosized and wrapped when needed > 
     $verbosepreference = 0
     $vms | scrape-vidata | sort cpup -Descending | select @columns | format-table -autosize | out-string | fromstring-colourize
