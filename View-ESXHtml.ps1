@@ -5,50 +5,153 @@
 ### No warranty is implied as this document is for internal use only
 ### Author: Kelsey R. Comstock
 ##########################################
+
+#Fork suggestions by abe:  /reallbigabe
+#CTRL-H'd write-host to Write-Output to output to file.  
+#Since you made a bunch of ascii animation type stuff, will need to clean up and build a display() vs output
+
 $methodmajor = '0.2'
 $methodminor = '3a'   
 $methodver = "vtBuild:$methodmajor-$methodminor //"
+
+#Launch Parameters - Now requires dot-loading the script; 
+#Should build name capability in, but breaks IP validation. 
+#No certs on an IP - therefore not a valid TLS connection, mate. 
+
+#Build default HTML header to inject CSS - allow passing of custom HTML from the line though: 
+$htmlhead = @'
+<style type="text/css">
+	.TFtable{
+		width:90%; 
+		border-collapse:collapse; 
+	}
+	.TFtable td{ 
+		padding:7px; border:#4e95f4 1px solid;
+	}
+	/* Catering to ancient and Shitty browsers */
+	.TFtable tr{
+		background: #b8d1f3;
+	}
+	.TFtable tr:nth-child(odd){ 
+		background: #b8d1f3;
+	}
+	.TFtable tr:nth-child(even){
+		background: #dae5f4;
+	}
+</style>
+
+<table class="TFtable">
+'@
+
+$htmlfoot = @'
+</table>
+'@
+
+
+#Launch these bad boys on first launch to build the serializer into .NET to speed up powerCLI (particularly things like Get-VM)
+#These addresses aren't formatted for launching from powershell
+
+#Read it yo damn self:  http://blogs.vmware.com/PowerCLI/2011/06/how-to-speed-up-the-execution-of-the-first-powercli-cmdlet.html
+
+#C:\Windows\Microsoft.NET\Framework\v2.0.50727\ngen.exe install "VimService41.XmlSerializers, Version=4.1.0.0, Culture=neutral, PublicKeyToken=10980b081e887e9f";` 
+#C:\Windows\Microsoft.NET\Framework\v2.0.50727\ngen.exe install "VimService40.XmlSerializers, Version=4.0.0.0, Culture=neutral, PublicKeyToken=10980b081e887e9f";`
+#C:\Windows\Microsoft.NET\Framework\v2.0.50727\ngen.exe install "VimService25.XmlSerializers, Version=2.5.0.0, Culture=neutral, PublicKeyToken=10980b081e887e9f"
+
+#IF OS is 64-bit, need the framework64 version AS WELL
+#C:\Windows\Microsoft.NET\Framework64\v2.0.50727\ngen.exe install "VimService41.XmlSerializers, Version=4.1.0.0, Culture=neutral, PublicKeyToken=10980b081e887e9f";
+#C:\Windows\Microsoft.NET\Framework64\v2.0.50727\ngen.exe install "VimService40.XmlSerializers, Version=4.0.0.0, Culture=neutral, PublicKeyToken=10980b081e887e9f";
+#C:\Windows\Microsoft.NET\Framework64\v2.0.50727\ngen.exe install "VimService25.XmlSerializers, Version=2.5.0.0, Culture=neutral, PublicKeyToken=10980b081e887e9f"
+
+
+#Give me params, baby
+function View-ESXHtml
+{
+    [CmdletBinding()]
+    Param
+    (
+
+		[ValidateScript({$_ -match [IPAddress]$_ })]  
+        [string]
+        $server = "192.168.86.199"
+		,
+		[string]
+		$headhtml = $htmlhead
+		,
+		[string]
+		$foothtml = $htmlfoot
+		,
+		[ValidateRange(0,2)]
+		[int]
+		$verbosepreference=0
+        ,
+		[String]
+        $OutputPath = ".\ESX-Current.html"
+		
+    )
+
+	
+	
 #
-# Feature Roadmap:
-#
-# Near Horizion.
-#
-# Pull vm version, add to monitored 
-#
-# Setup colour module for structured input
-#
-# 
-# 
+# I originally started modifying your tools script and then F-Bombed it into a second.  
+# Probaby best to do the actual monitoring as an Engine - with an Onscreen and Outputted versions to
+# avoid version / code drift
+
 #
 
+#dropped into launch params - but simply coding for -verbose and -debug is better.
 #$verbosepreference = 0 #verbose preference for pre-powerCLI snapins
 
-$host.ui.RawUI.WindowTitle = 'loading PowerCLI'
+Write-Host 'loading PowerCLI'
 
 Add-PSSnapin vmware.vimautomation.core -ea "silentlycontinue"
 
-$server = '192.168.86.199'
+## Yuck.  Launch parameter...
 
-$host.ui.RawUI.WindowTitle = 'Checking for vCentre Connection...'
+#negated on launch params
+#$server = '192.168.86.199'
+
+Write-Host 'Checking for vCentre Connection...'
 
 if (!$defaultviserver.IsConnected){
-    $host.ui.RawUI.WindowTitle = 'Connecting to $server...'    
-    write-verbose "Conencting to $server"
-    connect-viserver $server
-    }
+    Write-Host "Connecting to $server..."
+    
+    #M00t   
+    #write-verbose "Conencting to $server"
+    
+    #ERror handling brua
+    try {
+	connect-viserver $server -ErrorAction Stop
+		}
+	catch{
+	$server = Read-Host -Prompt "Give me a server I can actually connect to: "
+	}
+	finally {
+	Write-Verbose "Can't run a connect-viserver without errors"
+	Write-Output "You're hopeless."
+	}
+	
 
-
-
-
+#Good place for a parameter filter :  Also - does Get-VM pass all properties in the object by default, or do you need to select?  You could
+#probably also filter on the request side for properties you're not using - should speed up in a few hundred server environment	
 $vms =  get-vm
 
+
+#Derpy?
 #$vmguests = get-vm | Get-VMGuest
 
+#You can put this back... 
 #$verbosepreference = 2 #verbose-preference to get 
 
-$host.ui.RawUI.WindowTitle = "NOC WATCHKEEPER ALPHA                         $methodver LV:$global:pbtc_display_loaderver"
+$title = "NOC WATCHKEEPER ALPHA $methodver LV:$global:pbtc_display_loaderver"
 $numberOfVM = $vms.Length
 #$scrapespan = 1 #init to prevent 'devide by zero' error on first VM PER SECOND calc
+
+#As I got to the bottom, I think your loops are inefficient - but I'm new to this too. 
+# rather than a homemade i++ I think your function should be straightforward as you're already piping the stream to it. 
+# a foreach ($vm in $vms) {} would probably be faster.
+
+## LAst cof the night, its 1:!4 am and I need to be driving to the gym in 5 hours.  We'll work on this.  
+#I very well may drop this into a solarwinds NOC view.  :D
 
 function scrape-vidata {
     [cmdletbinding()]
@@ -61,17 +164,22 @@ function scrape-vidata {
         $i = 0
         $scrapeStartTime = get-date #timestamp for start of scrape time
         write-verbose "Last run took $scrapespan seconds for $numberOfVM VM's" #duration of last runtime
-        $pbarline = '_'*($numberofvm-($numberofvm.Tostring($_).length)) #line for progress bar, shorter to fit numbers on sides
-        $pbarlong = '_'*$numberofvm #line as many chars long as the number of vms
+        # Looks visual - Probably not needed for an HTML output
+        #New acronym - LVPNTFHO... ok, that just become LV
+        #LV 
+        #$pbarline = '_'*($numberofvm-($numberofvm.Tostring($_).length)) #line for progress bar, shorter to fit numbers on sides
+        #$pbarlong = '_'*$numberofvm #line as many chars long as the number of vms
         $vmps = [math]::round($numberOfVM / $scrapespan,3) #number of vm's per second
-        $pbarfull = "1$pbarline$numberOfVM [EST $scrapespan`s refresh @ $vmps` vmps]" #Progressbar for display
-        write-host $pbarfull
+        #LV
+        #$pbarfull = "1$pbarline$numberOfVM [EST $scrapespan`s refresh @ $vmps` vmps]" #Progressbar for display
+        #Write-Output $pbarfull
         }
     Process {
         $i++
         write-verbose "Loading VM:($i/$numberOfVM)"
         write-debug "Loading VM: $_.guest"
-        write-host '.'-NoNewline
+        #LV
+        #Write-Output '.'-NoNewline
         $flagstate = 1 # 1 - Green, 2 - Yellow, 3 - Red (0 reserved for future use)
         $flag = 'red'
         $pwrstate = $_.powerstate
@@ -212,7 +320,7 @@ function scrape-vidata {
     End {
         $scrapeEndTime = get-date
         $global:scrapespan = ($scrapeEndTime - $scrapeStartTime).seconds
-        write-host "Got $numberOfVm VM's in $global:scrapespan"
+        Write-Output "Got $numberOfVm VM's in $global:scrapespan"
         $vmstats = $null
     }
     } 
@@ -232,14 +340,14 @@ function fromstring-colourize {
 
         $outpage = $page.split([environment]::Newline)
         clear
-        write-host 
-        write-host $methodver
+        Write-Output 
+        Write-Output $methodver
         foreach ($line in $outpage){
                 if ($line.equals('')){continue} #catch and remove blanklines (generate real blanklines with a space)
-                if ($line.contains('green')){ write-host $line -foregroundcolor green -backgroundcolor darkgreen}              
-                elseif ($line.contains('yellow')){write-host $line -foregroundcolor yellow -backgroundcolor darkgray}
-                elseif ($line.contains('red')){write-host $line -foregroundcolor yellow -backgroundcolor red}
-                else {write-host $line -ForegroundColor darkgray -BackgroundColor blue}
+                if ($line.contains('green')){ Write-Output $line -foregroundcolor green -backgroundcolor darkgreen}              
+                elseif ($line.contains('yellow')){Write-Output $line -foregroundcolor yellow -backgroundcolor darkgray}
+                elseif ($line.contains('red')){Write-Output $line -foregroundcolor yellow -backgroundcolor red}
+                else {Write-Output $line -ForegroundColor darkgray -BackgroundColor blue}
                 }
     }
 }
@@ -257,22 +365,22 @@ function write-colour {
 
 function work {
     write-verbose 'starting workerbee 0.5'
-    #write-host "firstrun: $firstrun"
+    #Write-Output "firstrun: $firstrun"
     $columns = @{'property'='flag', 'pwrstate', 'guest', 'ip', 'rtt', 'flagreason', 'cpup', 'cpuhz','vmVer'}
     #take input vm's > grab data from them > sort by poperty > grab above columns | format in a table autosized and wrapped when needed > 
     $verbosepreference = 0
     $vms | scrape-vidata | sort cpup -Descending | select @columns | format-table -autosize | out-string | fromstring-colourize
     $refresh = 0
     $i = $refresh
-    #write-host $methodver -nonewline
+    #Write-Output $methodver -nonewline
     while ($i -gt 0 ) {
         $i--
-        Write-Host "." -NoNewline
+        Write-Output "." -NoNewline
         sleep -milliseconds 1000
         }
      
     }
 
 
-write-host 'all functions loaded fresh'
-write-host "Methods:$methodver"
+Write-Output 'all functions loaded fresh'
+Write-Output "Methods:$methodver"
