@@ -1,7 +1,7 @@
 ﻿ ##########################################
 ### This document is the exclusive property
 ### of the Packet Badger Technology Corporation
-### All Rights Reserverved 2016
+### All Rights Reserverved 2016!
 ### No warranty is implied as this document is for internal use only
 ### Author: Kelsey R. Comstock
 ##########################################
